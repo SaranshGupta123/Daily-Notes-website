@@ -20,6 +20,10 @@ app.use(session({
   }),
   //cookie: { maxAge: new Date ( Date.now() + (3600000) ) } 
   // Date.now() - 30 * 24 * 60 * 60 * 1000
+  cookie: {
+    secure: process.env.NODE_ENV === 'production', // Set to true in production for HTTPS
+    maxAge: 24 * 60 * 60 * 1000, // 1 day
+  }
 }));
 
 app.use(passport.initialize());
