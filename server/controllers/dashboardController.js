@@ -2,13 +2,12 @@ const Note = require("../models/Notes");
 const mongoose = require("mongoose");
 
 /**
- * GET /
+ * GET /dashboard
  * Dashboard
  */
 exports.dashboard = async (req, res) => {
-
-  let perPage = 12;
-  let page = req.query.page || 1;
+  let perPage = 12; // Number of notes per page
+  let page = req.query.page || 1; // Current page
 
   const locals = {
     title: "Dashboard",
@@ -16,22 +15,21 @@ exports.dashboard = async (req, res) => {
   };
 
   try {
-    // Mongoose "^7.0.0 Update
     const notes = await Note.aggregate([
       { $sort: { updatedAt: -1 } },
       { $match: { user: mongoose.Types.ObjectId(req.user.id) } },
       {
         $project: {
-          title: { $substr: ["$title", 0, 30] },
-          body: { $substr: ["$body", 0, 100] },
+          title: { $substr: ["$title", 0, 30] }, // Truncate title to 30 characters
+          body: { $substr: ["$body", 0, 100] }, // Truncate body to 100 characters
         },
       }
-      ])
-    .skip(perPage * page - perPage)
-    .limit(perPage)
-    .exec(); 
+    ])
+      .skip(perPage * page - perPage) // Pagination logic
+      .limit(perPage) // Limit to perPage items
+      .exec();
 
-    const count = await Note.count();
+    const count = await Note.countDocuments({ user: req.user.id }); // Count user-specific notes
 
     res.render('dashboard/index', {
       userName: req.user.firstName,
@@ -39,63 +37,40 @@ exports.dashboard = async (req, res) => {
       notes,
       layout: "../views/layouts/dashboard",
       current: page,
-      pages: Math.ceil(count / perPage)
+      pages: Math.ceil(count / perPage) // Total pages for pagination
     });
- 
-    // Original Code
-    // Note.aggregate([
-    //   { $sort: { updatedAt: -1 } },
-    //   { $match: { user: mongoose.Types.ObjectId(req.user.id) } },
-    //   {
-    //     $project: {
-    //       title: { $substr: ["$title", 0, 30] },
-    //       body: { $substr: ["$body", 0, 100] },
-    //     },
-    //   },
-    // ])
-    //   .skip(perPage * page - perPage)
-    //   .limit(perPage)
-    //   .exec(function (err, notes) {
-    //     Note.count().exec(function (err, count) {
-    //       if (err) return next(err);
-    //       res.render("dashboard/index", {
-    //         userName: req.user.firstName,
-    //         locals,
-    //         notes,
-    //         layout: "../views/layouts/dashboard",
-    //         current: page,
-    //         pages: Math.ceil(count / perPage),
-    //       });
-    //     });
-    //   });
-
+    
   } catch (error) {
     console.log(error);
+    res.status(500).send("Server Error");
   }
 };
 
 /**
- * GET /
+ * GET /dashboard/item/:id
  * View Specific Note
  */
 exports.dashboardViewNote = async (req, res) => {
-  const note = await Note.findById({ _id: req.params.id })
-    .where({ user: req.user.id })
-    .lean();
+  try {
+    const note = await Note.findById(req.params.id).where({ user: req.user.id }).lean();
 
-  if (note) {
-    res.render("dashboard/view-note", {
-      noteID: req.params.id,
-      note,
-      layout: "../views/layouts/dashboard",
-    });
-  } else {
-    res.send("Something went wrong.");
+    if (note) {
+      res.render("dashboard/view-note", {
+        noteID: req.params.id,
+        note,
+        layout: "../views/layouts/dashboard",
+      });
+    } else {
+      res.status(404).send("Note not found.");
+    }
+  } catch (error) {
+    console.log(error);
+    res.status(500).send("Server Error");
   }
 };
 
 /**
- * PUT /
+ * PUT /dashboard/item/:id
  * Update Specific Note
  */
 exports.dashboardUpdateNote = async (req, res) => {
@@ -107,11 +82,12 @@ exports.dashboardUpdateNote = async (req, res) => {
     res.redirect("/dashboard");
   } catch (error) {
     console.log(error);
+    res.status(500).send("Server Error");
   }
 };
 
 /**
- * DELETE /
+ * DELETE /dashboard/item-delete/:id
  * Delete Note
  */
 exports.dashboardDeleteNote = async (req, res) => {
@@ -120,11 +96,12 @@ exports.dashboardDeleteNote = async (req, res) => {
     res.redirect("/dashboard");
   } catch (error) {
     console.log(error);
+    res.status(500).send("Server Error");
   }
 };
 
 /**
- * GET /
+ * GET /dashboard/add
  * Add Notes
  */
 exports.dashboardAddNote = async (req, res) => {
@@ -134,21 +111,22 @@ exports.dashboardAddNote = async (req, res) => {
 };
 
 /**
- * POST /
+ * POST /dashboard/add
  * Add Notes
  */
 exports.dashboardAddNoteSubmit = async (req, res) => {
   try {
-    req.body.user = req.user.id;
-    await Note.create(req.body);
+    req.body.user = req.user.id; // Associate the note with the logged-in user
+    await Note.create(req.body); // Create a new note
     res.redirect("/dashboard");
   } catch (error) {
     console.log(error);
+    res.status(500).send("Server Error");
   }
 };
 
 /**
- * GET /
+ * GET /dashboard/search
  * Search
  */
 exports.dashboardSearch = async (req, res) => {
@@ -157,16 +135,19 @@ exports.dashboardSearch = async (req, res) => {
       searchResults: "",
       layout: "../views/layouts/dashboard",
     });
-  } catch (error) {}
+  } catch (error) {
+    console.log(error);
+    res.status(500).send("Server Error");
+  }
 };
 
 /**
- * POST /
+ * POST /dashboard/search
  * Search For Notes
  */
 exports.dashboardSearchSubmit = async (req, res) => {
   try {
-    let searchTerm = req.body.searchTerm;
+    const searchTerm = req.body.searchTerm;
     const searchNoSpecialChars = searchTerm.replace(/[^a-zA-Z0-9 ]/g, "");
 
     const searchResults = await Note.find({
@@ -182,5 +163,6 @@ exports.dashboardSearchSubmit = async (req, res) => {
     });
   } catch (error) {
     console.log(error);
+    res.status(500).send("Server Error");
   }
 };
