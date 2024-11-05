@@ -72,37 +72,36 @@ app.get('/google/callback', async (req, res) => {
   const authorizationCode = req.query.code;
 
   if (!authorizationCode) {
-    // Redirect to login if no code is provided
+    // Redirect to login if no code is present
     return res.redirect('/login');
   }
 
   try {
-    // Exchange the authorization code for an access token
+    // Exchange the code for an access token
     const tokenResponse = await axios.post('https://oauth2.googleapis.com/token', {
       code: authorizationCode,
       client_id: process.env.GOOGLE_CLIENT_ID,
       client_secret: process.env.GOOGLE_CLIENT_SECRET,
-      redirect_uri: 'http://localhost:5000/google/callback',  // or your Render URL in production
+      redirect_uri: 'http://localhost:5000/google/callback',  // Change this for production if needed
       grant_type: 'authorization_code',
     });
 
     const accessToken = tokenResponse.data.access_token;
 
-    // Use the access token to get user information from Google
+    // Use the access token to fetch user info
     const userInfoResponse = await axios.get('https://www.googleapis.com/oauth2/v2/userinfo', {
       headers: {
         Authorization: `Bearer ${accessToken}`,
       },
     });
 
-    // Store user data in session or database, as needed
+    // Optionally, store user data in the session or database
     req.session.user = userInfoResponse.data;
 
-    // Redirect to the dashboard after successful login
+    // Redirect to dashboard after successful login
     res.redirect('/dashboard');
   } catch (error) {
-    console.error('Error during OAuth callback processing:', error);
-    // Redirect to login on error
-    res.redirect('/login');
+    console.error('OAuth callback processing error:', error);
+    res.redirect('/login');  // Redirect to login if an error occurs
   }
 });
