@@ -12,7 +12,7 @@ router.get(
   "/google/callback",
   passport.authenticate("google", { failureRedirect: "/login-failure" }),
   (req, res) => {
-    // Successful authentication, log user data
+    // Successful authentication
     console.log("Callback received with user data:", req.user);
     
     // Redirect to the dashboard after successful login
