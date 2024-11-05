@@ -58,3 +58,6 @@ app.listen(port, () => {
 });
 
 app.use(express.static('public'));
+app.get('/', (req, res) => {
+  res.render('app.js'); 
+});
