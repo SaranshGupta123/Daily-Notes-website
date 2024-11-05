@@ -4,13 +4,13 @@ const passport = require("passport");
 const GoogleStrategy = require("passport-google-oauth20").Strategy;
 const User = require("../models/User");
 
-// Passport Configuration
+// Passport configuration for Google OAuth
 passport.use(
   new GoogleStrategy(
     {
       clientID: process.env.GOOGLE_CLIENT_ID,
       clientSecret: process.env.GOOGLE_CLIENT_SECRET,
-      callbackURL: process.env.GOOGLE_CALLBACK_URL,
+      callbackURL: process.env.GOOGLE_CALLBACK_URL || "https://notes-io-q780.onrender.com/google/callback",
     },
     async function (accessToken, refreshToken, profile, done) {
       const newUser = {
@@ -30,7 +30,7 @@ passport.use(
           done(null, user);
         }
       } catch (error) {
-        console.error("Error during user creation:", error);
+        console.error(error); // Log error for debugging
         done(error, null);
       }
     }
@@ -46,30 +46,27 @@ router.get(
 // Retrieve user data
 router.get(
   "/google/callback",
-  passport.authenticate("google", {
-    failureRedirect: "/login-failure",
-    successRedirect: "/dashboard",
-  }),
+  passport.authenticate("google", { failureRedirect: "/login-failure" }),
   (req, res) => {
-    // This function runs after a successful authentication
-    console.log("User authenticated successfully:", req.user);
-    res.redirect("/dashboard"); // You can also send user data if needed
+    console.log("User authenticated:", req.user); // Log user details for debugging
+    res.redirect("/dashboard");
   }
 );
 
 // Route if something goes wrong
 router.get('/login-failure', (req, res) => {
-  res.send('Something went wrong during login...');
+  res.send('Something went wrong...');
 });
 
 // Destroy user session
 router.get('/logout', (req, res) => {
-  req.logout((err) => {
-    if (err) {
-      console.error("Logout error:", err);
-      return res.send('Error logging out');
+  req.session.destroy(error => {
+    if (error) {
+      console.log(error);
+      res.send('Error logging out');
+    } else {
+      res.redirect('/');
     }
-    res.redirect('/');
   });
 });
 
@@ -78,13 +75,12 @@ passport.serializeUser(function (user, done) {
   done(null, user.id);
 });
 
-// Retrieve user data from session
+// Retrieve user data from session.
 passport.deserializeUser(async (id, done) => {
   try {
     const user = await User.findById(id);
     done(null, user);
   } catch (err) {
-    console.error("Deserialization error:", err);
     done(err, null);
   }
 });
