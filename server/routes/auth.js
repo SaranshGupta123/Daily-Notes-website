@@ -4,6 +4,7 @@ const passport = require("passport");
 const GoogleStrategy = require("passport-google-oauth20").Strategy;
 const User = require("../models/User");
 
+// Google Strategy setup
 passport.use(
   new GoogleStrategy(
     {
@@ -29,7 +30,8 @@ passport.use(
           done(null, user);
         }
       } catch (error) {
-        console.log(error);
+        console.error("Error in Google Strategy:", error);
+        done(error, null);
       }
     }
   )
@@ -41,13 +43,20 @@ router.get(
   passport.authenticate("google", { scope: ["email", "profile"] })
 );
 
-// Retrieve user data
+// Retrieve user data with enhanced logging
 router.get(
   "/google/callback",
+  (req, res, next) => {
+    console.log('Google Callback:', req.query); // Log the callback parameters
+    next(); // Proceed to authentication
+  },
   passport.authenticate("google", {
     failureRedirect: "/login-failure",
-    successRedirect: "/dashboard",
-  })
+  }),
+  (req, res) => {
+    console.log("User authenticated:", req.user); // Log the authenticated user
+    res.redirect("/dashboard"); // Redirect to dashboard on success
+  }
 );
 
 // Route if something goes wrong
@@ -58,40 +67,29 @@ router.get('/login-failure', (req, res) => {
 // Destroy user session
 router.get('/logout', (req, res) => {
   req.session.destroy(error => {
-    if(error) {
-      console.log(error);
-      res.send('Error loggin out');
+    if (error) {
+      console.log("Error logging out:", error);
+      res.send('Error logging out');
     } else {
-      res.redirect('/')
+      res.redirect('/');
     }
-  })
+  });
 });
 
-
-// Presist user data after successful authentication
+// Persist user data after successful authentication
 passport.serializeUser(function (user, done) {
   done(null, user.id);
 });
 
-// Retrieve user data from session.
-// Original Code
-// passport.deserializeUser(function (id, done) {
-//   User.findById(id, function (err, user) {
-//     done(err, user);
-//   });
-// });
-
-// New
+// Retrieve user data from session with error handling
 passport.deserializeUser(async (id, done) => {
   try {
     const user = await User.findById(id);
     done(null, user);
   } catch (err) {
+    console.error("Error during deserialization:", err);
     done(err, null);
   }
 });
-
-
-
 
 module.exports = router;
