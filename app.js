@@ -10,8 +10,12 @@ const MongoStore = require('connect-mongo');
 const axios = require('axios');
 
 const app = express();
-const port = 5000 || process.env.PORT;
+const port = process.env.PORT || 5000;
 
+// Connect to Database
+connectDB();
+
+// Session middleware
 app.use(session({
   secret: 'keyboard cat',
   resave: false,
@@ -19,8 +23,6 @@ app.use(session({
   store: MongoStore.create({
     mongoUrl: process.env.MONGODB_URI
   }),
-  //cookie: { maxAge: new Date ( Date.now() + (3600000) ) } 
-  // Date.now() - 30 * 24 * 60 * 60 * 1000
   cookie: {
     secure: process.env.NODE_ENV === 'production', // Set to true in production for HTTPS
     maxAge: 24 * 60 * 60 * 1000, // 1 day
@@ -29,22 +31,15 @@ app.use(session({
 
 app.use(passport.initialize());
 app.use(passport.session());
-
-app.use(express.urlencoded({extended: true}));
+app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
 app.use(methodOverride("_method"));
-// Conntect to Database
-connectDB();  
-
-// Static Files
-app.use(express.static('public'));
+app.use(express.static('public')); // Serve static files before routes
 
 // Templating Engine
 app.use(expressLayouts);
 app.set('layout', './layouts/main');
 app.set('view engine', 'ejs');
-
-
 
 // Routes
 app.use('/', require('./server/routes/auth'));
@@ -53,55 +48,43 @@ app.use('/', require('./server/routes/dashboard'));
 
 // Handle 404
 app.get('*', function(req, res) {
-  //res.status(404).send('404 Page Not Found.')
   res.status(404).render('404');
-})
-
+});
 
 app.listen(port, () => {
   console.log(`App listening on port ${port}`);
 });
 
-app.use(express.static('public'));
-app.get('/', (req, res) => {
-  res.render('app.js'); 
-});
-
-
+// Google OAuth callback
 app.get('/google/callback', async (req, res) => {
   const authorizationCode = req.query.code;
 
   if (!authorizationCode) {
-    // Redirect to login if no code is present
     return res.redirect('/login');
   }
 
   try {
-    // Exchange the code for an access token
     const tokenResponse = await axios.post('https://oauth2.googleapis.com/token', {
       code: authorizationCode,
       client_id: process.env.GOOGLE_CLIENT_ID,
       client_secret: process.env.GOOGLE_CLIENT_SECRET,
-      redirect_uri: 'http://localhost:5000/google/callback',  // Change this for production if needed
+      redirect_uri: 'http://localhost:5000/google/callback', 
       grant_type: 'authorization_code',
     });
 
     const accessToken = tokenResponse.data.access_token;
 
-    // Use the access token to fetch user info
     const userInfoResponse = await axios.get('https://www.googleapis.com/oauth2/v2/userinfo', {
       headers: {
         Authorization: `Bearer ${accessToken}`,
       },
     });
 
-    // Optionally, store user data in the session or database
     req.session.user = userInfoResponse.data;
 
-    // Redirect to dashboard after successful login
     res.redirect('/dashboard');
   } catch (error) {
     console.error('OAuth callback processing error:', error);
-    res.redirect('/login');  // Redirect to login if an error occurs
+    res.redirect('/login');  
   }
 });
