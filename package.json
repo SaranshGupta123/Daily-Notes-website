@@ -6,7 +6,7 @@
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "start": "node app.js",
-    "build": "echo 'No build process required'"  // Add this line
+    "build": "echo 'No build process required'"  // Placeholder for build script
   },
   "keywords": [],
   "author": "",
