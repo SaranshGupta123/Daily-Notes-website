@@ -7,6 +7,7 @@ const connectDB = require('./server/config/db');
 const session = require('express-session');
 const passport = require('passport');
 const MongoStore = require('connect-mongo');
+const axios = require('axios');
 
 const app = express();
 const port = 5000 || process.env.PORT;
@@ -64,4 +65,44 @@ app.listen(port, () => {
 app.use(express.static('public'));
 app.get('/', (req, res) => {
   res.render('app.js'); 
+});
+
+
+app.get('/google/callback', async (req, res) => {
+  const authorizationCode = req.query.code;
+
+  if (!authorizationCode) {
+    // Redirect to login if no code is provided
+    return res.redirect('/login');
+  }
+
+  try {
+    // Exchange the authorization code for an access token
+    const tokenResponse = await axios.post('https://oauth2.googleapis.com/token', {
+      code: authorizationCode,
+      client_id: process.env.GOOGLE_CLIENT_ID,
+      client_secret: process.env.GOOGLE_CLIENT_SECRET,
+      redirect_uri: 'http://localhost:5000/google/callback',  // or your Render URL in production
+      grant_type: 'authorization_code',
+    });
+
+    const accessToken = tokenResponse.data.access_token;
+
+    // Use the access token to get user information from Google
+    const userInfoResponse = await axios.get('https://www.googleapis.com/oauth2/v2/userinfo', {
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+      },
+    });
+
+    // Store user data in session or database, as needed
+    req.session.user = userInfoResponse.data;
+
+    // Redirect to the dashboard after successful login
+    res.redirect('/dashboard');
+  } catch (error) {
+    console.error('Error during OAuth callback processing:', error);
+    // Redirect to login on error
+    res.redirect('/login');
+  }
 });
