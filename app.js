@@ -1,7 +1,7 @@
 const express = require("express");
 const session = require("express-session");
 const passport = require("passport");
-const authRoutes = require("./routes/auth"); // Adjust path as necessary
+const authRoutes = require("./routes/auth"); // Adjust path if necessary
 // Additional imports (mongoose, dotenv, etc.) if needed
 
 const app = express();
