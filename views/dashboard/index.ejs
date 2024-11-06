@@ -37,7 +37,7 @@
   <% if(notes.length > 0) { %>
     <nav aria-label="Page navigation example">
       <ul class="pagination justify-content-center mt-5">
-        <% if(current == 1)%>
+        <% if(current == 1) { %>
           <li class="page-item"><a class="page-link" href="/dashboard">First</a></li>
         <% }  %>
         <% var i = (Number(current) > 5 ? Number(current) - 4 : 1) %>
